@@ -7,5 +7,16 @@
     <select id="findById" resultType="com.example.demo.entity.Book">
         SELECT * FROM book WHERE id = #{id}
     </select>
-
+    <insert id="insert">
+        INSERT INTO book (name, author, category, stock)
+        VALUES (#{name}, #{author}, #{category}, #{stock})
+    </insert>
+    <update id="update">
+        UPDATE book
+        SET name = #{name}, author = #{author}, category = #{category}, stock = #{stock}
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        DELETE FROM book WHERE id = #{id}
+    </delete>
 </mapper>

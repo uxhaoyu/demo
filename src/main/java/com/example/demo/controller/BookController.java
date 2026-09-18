@@ -4,9 +4,8 @@ import com.example.demo.common.Result;
 import com.example.demo.entity.Book;
 import com.example.demo.service.BookService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -26,5 +25,21 @@ public class BookController {
             return Result.error("书不存在，id=" + id);
         }
         return Result.success(book);
+    }
+    @PostMapping("api/books")
+    public Result<Void> insert(@RequestBody Book book) {
+        bookService.insert(book);
+        return Result.success(null);
+    }
+    @PutMapping("api/books/{id}")
+    public Result<Void> update(@RequestBody Book book, @PathVariable Integer id) {
+        book.setId(id);
+        bookService.update(book);
+        return Result.success(null);
+    }
+    @DeleteMapping("api/books/{id}")
+    public Result<Void> delete(@PathVariable Integer id) {
+        bookService.delete(id);
+        return Result.success(null);
     }
 }
