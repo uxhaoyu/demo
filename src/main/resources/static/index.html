@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图书管理系统</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        h2 { color: #333; }
+        input { padding: 6px 10px; margin: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 6px 14px; margin: 4px; background: #409EFF; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button.del { background: #F56C6C; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #f5f7fa; }
+        #loginBox { border: 1px solid #ddd; padding: 16px; border-radius: 6px; margin-bottom: 20px; }
+        #loginMsg { color: #F56C6C; font-size: 14px; }
+    </style>
+</head>
+<body>
+<h2>📚 图书管理系统</h2>
+
+<!-- 登录区 -->
+<div id="loginBox">
+    <h3>登录</h3>
+    <input id="username" placeholder="用户名">
+    <input id="password" placeholder="密码" type="password">
+    <button onclick="login()">登录</button>
+    <button onclick="register()">注册</button>
+    <span id="loginMsg"></span>
+</div>
+
+<!-- 新增区 -->
+<h3>新增图书</h3>
+<input id="bookName" placeholder="书名">
+<input id="bookAuthor" placeholder="作者">
+<input id="bookCategory" placeholder="分类">
+<input id="bookStock" placeholder="库存" type="number">
+<button onclick="addBook()" id="addBtn">新增</button>
+
+
+<!-- 图书列表 -->
+<h3>图书列表</h3>
+<table>
+    <thead>
+    <tr><th>ID</th><th>书名</th><th>作者</th><th>分类</th><th>库存</th><th>操作</th></tr>
+    </thead>
+    <tbody id="bookTable"></tbody>
+</table>
+
+<script>
+    // 页面加载时，先查列表
+    loadBooks();
+
+    let editingId = null;   // 正在编辑的图书 id；null = 没在编辑（新增模式）
+
+    // 1. 查列表：GET /api/books
+    function loadBooks() {
+        fetch('/api/books')
+            .then(res => res.json())
+            .then(resp => {
+                let rows = resp.data.map(book =>
+                    `<tr>
+                            <td>${book.id}</td>
+                            <td>${book.name}</td>
+                            <td>${book.author}</td>
+                            <td>${book.category}</td>
+                            <td>${book.stock}</td>
+                            <td><button onclick="editBook(${book.id})">编辑</button> <button class="del" onclick="deleteBook(${book.id})">删除</button></td>
+                        </tr>`
+                ).join('');
+                document.getElementById('bookTable').innerHTML = rows;
+            });
+    }
+
+    // 2.5 编辑：点"编辑"→ 把这本书填进输入框，按钮变"保存修改"
+    function editBook(id) {
+        fetch('/api/books/' + id)
+            .then(res => res.json())
+            .then(resp => {
+                let b = resp.data;
+                document.getElementById('bookName').value = b.name;
+                document.getElementById('bookAuthor').value = b.author;
+                document.getElementById('bookCategory').value = b.category;
+                document.getElementById('bookStock').value = b.stock;
+                editingId = id;
+                document.getElementById('addBtn').textContent = '保存修改';
+            });
+    }
+
+    // 2. 新增/保存修改：没在编辑=POST新增；在编辑=PUT修改
+    function addBook() {
+        let book = {
+            name: document.getElementById('bookName').value,
+            author: document.getElementById('bookAuthor').value,
+            category: document.getElementById('bookCategory').value,
+            stock: Number(document.getElementById('bookStock').value)
+        };
+        // 在编辑 → 改 PUT /api/books/{id}；没在编辑 → 用 POST /api/books
+        let url = editingId ? '/api/books/' + editingId : '/api/books';
+        let method = editingId ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(book)
+        })
+            .then(res => res.json())
+            .then(resp => {
+                alert(resp.message);
+                editingId = null;                                  // 退出编辑模式
+                document.getElementById('addBtn').textContent = '新增';  // 按钮变回去
+                loadBooks();
+            });
+    }
+
+    // 3. 删除：DELETE /api/books/{id}
+    function deleteBook(id) {
+        fetch('/api/books/' + id, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(resp => {
+                alert(resp.message);
+                loadBooks();
+            });
+    }
+
+    // 4. 登录：POST /api/user/login，token 存 localStorage
+    function login() {
+        let user = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        };
+        fetch('/api/user/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(user)
+        })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.code === 200) {
+                    localStorage.setItem('token', resp.data);   // token 存浏览器本地
+                    document.getElementById('loginMsg').innerHTML = '✅ 登录成功，token 已保存';
+                } else {
+                    document.getElementById('loginMsg').innerHTML = '❌ ' + resp.message;
+                }
+            });
+    }
+    // 5. 注册：POST /api/user/register
+    function register() {
+        let user = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        };
+        fetch('/api/user/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(user)
+        })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.code === 200) {
+                    document.getElementById('loginMsg').innerHTML = '✅ 注册成功，去登录';
+                } else {
+                    document.getElementById('loginMsg').innerHTML = '❌ ' + resp.message;
+                }
+            });
+    }
+
+</script>
+</body>
+</html>
